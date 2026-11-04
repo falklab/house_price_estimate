@@ -1,0 +1,10 @@
+# Bulk downloads and the built database (tens of GB)
+data/
+*.duckdb
+*.parquet
+# Inputs/outputs may contain personal addresses
+*.csv
+*.tsv
+.venv/
+__pycache__/
+.pytest_cache/
