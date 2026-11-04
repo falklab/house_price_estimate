@@ -1,11 +1,12 @@
-"""Command line interface.
-
-download   fetch bulk datasets (the only command that uses the network)
-build      build the local database from the downloads
-estimate   value one address or a CSV of addresses, fully offline
-backtest   measure accuracy on past sales, fully offline
-calibrate  fit estimate ranges from a backtest, fully offline
 """
+Command line interface.
+
+  download   fetch bulk datasets (the only command that uses the network)
+  build      build the local database from the downloads
+  estimate   value one address or a CSV of addresses, fully offline
+  backtest   measure accuracy on past sales, fully offline
+  calibrate  fit estimate ranges from a backtest, fully offline
+"""  # noqa: D212 - also the --help text; summary on line 1 would dedent the list
 
 import argparse
 import datetime as dt
