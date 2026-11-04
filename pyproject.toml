@@ -74,3 +74,21 @@ extend-immutable-calls = ["house_price_estimate.config.ModelParams"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "local_data: needs large local test data not in the repo (HOUSE_PRICE_ESTIMATE_LOCAL_DATA)",
+    "slow: takes more than a couple of seconds; skipped by the pre-commit hook",
+]
+
+[tool.coverage.run]
+source = ["house_price_estimate"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+# Baseline at time of setup; raise as coverage improves
+fail_under = 80

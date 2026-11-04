@@ -4,17 +4,25 @@ per test session.
 """
 
 import csv
-import sys
+import os
+import shutil
 import zipfile
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from house_price_estimate.build import build_all
+from house_price_estimate.config import Paths
 
-from house_price_estimate.build import build_all  # noqa: E402
-from house_price_estimate.config import Paths  # noqa: E402
+LOCAL_DATA_ENV: str = "HOUSE_PRICE_ESTIMATE_LOCAL_DATA"
+"""Environment variable giving the directory of large local test data."""
+
+REQUIRED_BINARIES: dict[str, str] = {
+    # One entry per external tool, e.g. "requires_rtk": "rtk". Each marker
+    # must also be registered under [tool.pytest.ini_options] markers.
+}
+"""Map of pytest marker to the executable it needs on PATH."""
 
 LAD, RGN = "E07000148", "E12000006"
 
@@ -172,3 +180,55 @@ def paths(tmp_path_factory) -> Paths:
     write_raw(paths.raw)
     build_all(paths)
     return paths
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    """Skip tests whose external requirements are not available."""
+    local_data = os.environ.get(LOCAL_DATA_ENV)
+    has_local_data = local_data is not None and Path(local_data).is_dir()
+    skip_local_data = pytest.mark.skip(
+        reason=f"set {LOCAL_DATA_ENV} to a directory of local test data"
+    )
+    missing = {
+        marker: binary
+        for marker, binary in REQUIRED_BINARIES.items()
+        if shutil.which(binary) is None
+    }
+    for item in items:
+        if "local_data" in item.keywords and not has_local_data:
+            item.add_marker(skip_local_data)
+        for marker, binary in missing.items():
+            if marker in item.keywords:
+                item.add_marker(pytest.mark.skip(reason=f"{binary} not found on PATH"))
+
+
+@pytest.fixture(autouse=True)
+def _run_from_repo_root(
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Run every test from the repository root."""
+    monkeypatch.chdir(request.config.rootpath)
+
+
+@pytest.fixture
+def data_dir() -> Path:
+    """Directory of small test data files committed to the repository."""
+    return Path(__file__).parent / "data"
+
+
+@pytest.fixture
+def expected_dir() -> Path:
+    """Directory of expected (golden) test outputs."""
+    return Path(__file__).parent / "expected"
+
+
+@pytest.fixture
+def local_data_dir() -> Path:
+    """Directory of large local test data, not committed to the repository.
+
+    Tests using this should be marked `local_data`, so they are skipped when
+    the directory is not available.
+    """
+    return Path(os.environ[LOCAL_DATA_ENV])
