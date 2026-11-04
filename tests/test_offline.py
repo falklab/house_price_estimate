@@ -1,6 +1,7 @@
 import socket
 import urllib.request
 
+import duckdb
 import pytest
 
 from house_price_estimate.estimate import Estimator
@@ -27,7 +28,7 @@ def test_duckdb_is_locked_down(paths):
     est = Estimator(paths.db)
     with pytest.raises(Exception, match="(?i)disabled|permission"):
         est.conn.execute("SELECT * FROM read_csv('https://example.com/x.csv')")
-    with pytest.raises(Exception):
+    with pytest.raises(duckdb.Error):
         est.conn.execute("SET enable_external_access = true")
     # A second Estimator on the same file shares the locked instance.
     est2 = Estimator(paths.db)

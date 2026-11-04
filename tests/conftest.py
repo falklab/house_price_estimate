@@ -4,9 +4,9 @@ per test session.
 """
 
 import csv
-from pathlib import Path
 import sys
 import zipfile
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -141,7 +141,10 @@ def write_raw(raw: Path) -> None:
         )
         w.writerows(_hpi_rows())
     (raw / "onspd").mkdir()
-    header = "pcd7,pcds,doterm,lad26cd,east1m,north1m,ctry26cd,rgn26cd,lsoa21cd,cty26cd,ruc21ind\n"
+    header = (
+        "pcd7,pcds,doterm,lad26cd,east1m,north1m,ctry26cd,rgn26cd,lsoa21cd,"
+        "cty26cd,ruc21ind\n"
+    )
     body = "".join(
         f'"{pc}","{pc}","","{LAD}","{e}","{n}","{c}","{RGN}","E01000001","E10000020","UN1"\n'
         for pc, e, n, c in POSTCODES

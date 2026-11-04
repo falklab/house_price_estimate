@@ -1,5 +1,4 @@
-"""
-Estimate the current value of an address from the local database.
+"""Estimate the current value of an address from the local database.
 
 Two estimates are combined:
   repeat sale  the property's last sale, indexed with the UK HPI
@@ -12,11 +11,10 @@ All work is local. ``Estimator`` opens the database read-only and locks
 DuckDB down so it cannot reach the network or other files.
 """
 
-from dataclasses import asdict, dataclass
 import json
 import math
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import List, Optional
 
 import duckdb
 import numpy as np
@@ -36,33 +34,33 @@ PPD_COLS = (
 
 @dataclass
 class Valuation:
-    postcode: Optional[str] = None
+    postcode: str | None = None
     status: str = ""
     """'ok', 'no_postcode' or 'postcode_not_found'."""
     ppd_match: str = "none"
     ppd_match_score: float = 0.0
     epc_match: str = "none"
-    property_type: Optional[str] = None
-    property_type_source: Optional[str] = None
-    floor_area: Optional[float] = None
+    property_type: str | None = None
+    property_type_source: str | None = None
+    floor_area: float | None = None
     n_sales: int = 0
-    last_sale_price: Optional[int] = None
-    last_sale_date: Optional[str] = None
-    last_sale_new_build: Optional[bool] = None
-    repeat_sale_est: Optional[float] = None
+    last_sale_price: int | None = None
+    last_sale_date: str | None = None
+    last_sale_new_build: bool | None = None
+    repeat_sale_est: float | None = None
     comps_n: int = 0
-    comps_radius_m: Optional[int] = None
+    comps_radius_m: int | None = None
     comps_floor_area_adjusted: bool = False
-    comps_est: Optional[float] = None
+    comps_est: float | None = None
     repeat_weight: float = 0.0
-    estimate: Optional[float] = None
-    low: Optional[float] = None
-    high: Optional[float] = None
+    estimate: float | None = None
+    low: float | None = None
+    high: float | None = None
     method: str = ""
-    calibration_group: Optional[str] = None
+    calibration_group: str | None = None
     confidence: str = ""
-    valuation_month: Optional[str] = None
-    hpi_series: Optional[str] = None
+    valuation_month: str | None = None
+    hpi_series: str | None = None
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -76,7 +74,7 @@ def weighted_quantile(values, weights, q):
     return np.interp(q, cum, v)
 
 
-def calibration_group(v: "Valuation") -> Optional[str]:
+def calibration_group(v: "Valuation") -> str | None:
     """Which empirical error distribution an estimate's range comes from."""
     if v.method == "repeat_sale+comparables":
         years = (
@@ -102,9 +100,9 @@ def _s(x) -> str:
     return "" if x is None or (isinstance(x, float) and math.isnan(x)) else str(x)
 
 
-def ppd_candidates(df: pd.DataFrame) -> List[Candidate]:
+def ppd_candidates(df: pd.DataFrame) -> list[Candidate]:
     out = []
-    for saon, paon, street in zip(df["saon"], df["paon"], df["street"]):
+    for saon, paon, street in zip(df["saon"], df["paon"], df["street"], strict=True):
         unit = normalise_text(f"{_s(saon)} {_s(paon)}")
         street = normalise_text(_s(street))
         out.append(
@@ -113,9 +111,9 @@ def ppd_candidates(df: pd.DataFrame) -> List[Candidate]:
     return out
 
 
-def epc_candidates(df: pd.DataFrame) -> List[Candidate]:
+def epc_candidates(df: pd.DataFrame) -> list[Candidate]:
     out = []
-    for a1, a2, a3 in zip(df["address1"], df["address2"], df["address3"]):
+    for a1, a2, a3 in zip(df["address1"], df["address2"], df["address3"], strict=True):
         text = normalise_text(" ".join(_s(a) for a in (a1, a2, a3)))
         out.append(Candidate(text, normalise_text(_s(a1)), "", identifiers(text)))
     return out
@@ -126,13 +124,14 @@ class Estimator:
         self,
         db_path: Path,
         params: ModelParams = ModelParams(),
-        calibration: Optional[Path] = None,
+        calibration: Path | None = None,
         use_calibration: bool = True,
     ):
-        """
+        """Open the database and load the calibration.
+
         ``calibration`` defaults to the file written by ``calibrate`` next to
-        the database for these params (with or without EPC). Without one,
-        the range falls back to the comparables' interquartile range.
+        the database for these params (with or without EPC). Without one, the
+        range falls back to the comparables' interquartile range.
         """
         if not Path(db_path).exists():
             raise FileNotFoundError(f"{db_path} not found; run the build step first")
@@ -155,7 +154,7 @@ class Estimator:
 
     # -- lookups -------------------------------------------------------------
 
-    def _location(self, postcode: str) -> Optional[dict]:
+    def _location(self, postcode: str) -> dict | None:
         df = self._df(
             "SELECT east, north, lad, rgn FROM onspd WHERE postcode = ?", [postcode]
         )

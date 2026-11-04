@@ -1,7 +1,8 @@
-"""
-Accuracy check: value a random sample of past sales using only data from
-before each sale, then compare with the price actually paid. The same
-backtest calibrates the estimate ranges (``calibrate``).
+"""Accuracy check on past sales.
+
+Values a random sample of past sales using only data from before each sale,
+then compares with the price actually paid. The same backtest calibrates the
+estimate ranges (``calibrate``).
 
 The address string is rebuilt from the Land Registry fields, so address
 matching is exercised too. HPI values are as currently published (later
@@ -9,9 +10,8 @@ revisions are a small look-ahead).
 """
 
 import logging
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
-import numpy as np
 import pandas as pd
 
 from .estimate import Estimator, _s
@@ -31,7 +31,7 @@ def _address(row) -> str:
 
 def sample_sales(
     est: Estimator,
-    year: Optional[int],
+    year: int | None,
     n: int,
     seed: int = 1,
     start=None,
@@ -39,10 +39,11 @@ def sample_sales(
     counties: Sequence[str] = (),
     england_only: bool = False,
 ) -> pd.DataFrame:
-    """
-    Random non-new-build sales in ``year``, or from ``start`` (inclusive) to
-    ``end`` (exclusive), optionally only in the given ONSPD county codes
-    or only in England.
+    """Random non-new-build sales in a year or date range.
+
+    Sales are in ``year``, or from ``start`` (inclusive) to ``end``
+    (exclusive), optionally only in the given ONSPD county codes or only in
+    England.
     """
     where, args = ["NOT p.new_build"], []
     if year is not None:
@@ -65,7 +66,8 @@ def sample_sales(
     return est.conn.execute(
         f"""
         SELECT * FROM (
-            SELECT p.price, p.date, p.postcode, p.ptype, p.paon, p.saon, p.street, p.town
+            SELECT p.price, p.date, p.postcode, p.ptype, p.paon, p.saon, p.street,
+                   p.town
             FROM ppd p {join} WHERE {" AND ".join(where)})
         USING SAMPLE reservoir({int(n)} ROWS) REPEATABLE ({int(seed)})
         """,
@@ -75,10 +77,10 @@ def sample_sales(
 
 def run_backtest(
     est: Estimator,
-    year: Optional[int],
+    year: int | None,
     n: int,
     seed: int = 1,
-    sales: Optional[pd.DataFrame] = None,
+    sales: pd.DataFrame | None = None,
     **sample_kw,
 ) -> pd.DataFrame:
     """Value sampled sales as of their sale date. ``sales`` reuses a sample."""
@@ -133,9 +135,10 @@ def summarise(df: pd.DataFrame) -> pd.DataFrame:
 def calibrate(
     est: Estimator, year: int, n: int, seed: int = 1, min_group: int = 50
 ) -> dict:
-    """
-    10th/90th percentiles of actual / estimate per calibration group, from
-    a backtest. Groups with fewer than ``min_group`` sales use 'all'.
+    """10th/90th percentiles of actual / estimate per calibration group.
+
+    Computed from a backtest. Groups with fewer than ``min_group`` sales use
+    'all'.
     """
     df = run_backtest(est, year, n, seed).dropna(subset=["estimate"])
     df = df.assign(ratio=df["actual"] / df["estimate"])
@@ -153,7 +156,9 @@ def calibrate(
         if len(g) >= min_group:
             groups[name] = quantiles(g)
     return {
-        "description": "10th/90th percentiles of actual price / estimate from a backtest",
+        "description": (
+            "10th/90th percentiles of actual price / estimate from a backtest"
+        ),
         "year": year,
         "n": int(len(df)),
         "seed": seed,

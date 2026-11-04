@@ -1,10 +1,7 @@
-"""
-Address parsing and normalisation. Pure functions, no I/O.
-"""
+"""Address parsing and normalisation. Pure functions, no I/O."""
 
-from dataclasses import dataclass
 import re
-from typing import Optional, Tuple
+from dataclasses import dataclass
 
 POSTCODE_RE = re.compile(
     r"(?<![A-Z0-9])([A-Z]{1,2}[0-9][A-Z0-9]?) ?([0-9][A-Z]{2})(?![A-Z0-9])"
@@ -35,7 +32,7 @@ ABBREVIATIONS = {
 UNIT_WORDS = {"FLAT", "APARTMENT", "UNIT", "MAISONETTE", "STUDIO", "ROOM"}
 
 
-def normalise_text(s: Optional[str]) -> str:
+def normalise_text(s: str | None) -> str:
     """Upper-case, strip punctuation, collapse spaces, expand abbreviations."""
     if not s:
         return ""
@@ -44,7 +41,7 @@ def normalise_text(s: Optional[str]) -> str:
     return " ".join(ABBREVIATIONS.get(t, t) for t in tokens)
 
 
-def normalise_postcode(s: Optional[str]) -> Optional[str]:
+def normalise_postcode(s: str | None) -> str | None:
     """Return the postcode in 'OUT IN' form, or None if not a valid shape."""
     if not s:
         return None
@@ -54,7 +51,7 @@ def normalise_postcode(s: Optional[str]) -> Optional[str]:
     return f"{m.group(1)} {m.group(2)}" if m else None
 
 
-def extract_postcode(raw: str) -> Tuple[Optional[str], str]:
+def extract_postcode(raw: str) -> tuple[str | None, str]:
     """Find the last postcode in an address; return it and the rest."""
     s = re.sub(r"\s+", " ", raw.upper())
     matches = list(POSTCODE_RE.finditer(s))
@@ -65,11 +62,12 @@ def extract_postcode(raw: str) -> Tuple[Optional[str], str]:
     return f"{m.group(1)} {m.group(2)}", rest
 
 
-def identifiers(norm: str) -> Tuple[str, ...]:
-    """
-    House/flat identifiers in order: numbers (with an optional letter
-    suffix) and single letters after unit words, e.g. "FLAT B 12 HIGH ROAD"
-    gives ("B", "12"). "12 A" is merged to "12A".
+def identifiers(norm: str) -> tuple[str, ...]:
+    """House/flat identifiers in order.
+
+    Numbers (with an optional letter suffix) and single letters after unit
+    words, e.g. "FLAT B 12 HIGH ROAD" gives ("B", "12"). "12 A" is merged to
+    "12A".
     """
     tokens = norm.split()
     out = []
@@ -87,12 +85,12 @@ def identifiers(norm: str) -> Tuple[str, ...]:
 
 @dataclass(frozen=True)
 class ParsedAddress:
-    postcode: Optional[str]
+    postcode: str | None
     text: str
     """Normalised address without the postcode."""
     name: str
     """Normalised first comma-separated part, e.g. a house name."""
-    idents: Tuple[str, ...]
+    idents: tuple[str, ...]
 
 
 def parse_address(raw: str) -> ParsedAddress:

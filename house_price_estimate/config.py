@@ -1,12 +1,11 @@
-"""
-Paths, bulk-download URLs and model parameters.
+"""Paths, bulk-download URLs and model parameters.
 
 The URLs here are the only remote locations the package ever contacts, and
 only from the ``download`` command. None of them carry address data.
 """
 
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent

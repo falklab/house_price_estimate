@@ -1,17 +1,17 @@
-"""
-Bulk downloads. This is the only module that uses the network, and it never
-takes address input: every URL is a fixed constant from ``config``.
+"""Bulk downloads.
+
+This is the only module that uses the network, and it never takes address
+input: every URL is a fixed constant from ``config``.
 """
 
 import datetime as dt
 import json
 import logging
-from pathlib import Path
 import re
 import shutil
-from typing import Optional
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 from .config import (
     ARCGIS_ITEM_DATA_URL,
@@ -27,14 +27,14 @@ USER_AGENT = "house-price-estimate/0.1 (bulk download)"
 CHUNK = 1 << 20
 
 
-def _open(url: str, headers: Optional[dict] = None):
+def _open(url: str, headers: dict | None = None):
     req = urllib.request.Request(
         url, headers={"User-Agent": USER_AGENT, **(headers or {})}
     )
     return urllib.request.urlopen(req, timeout=60)
 
 
-def _remote_size(url: str) -> Optional[int]:
+def _remote_size(url: str) -> int | None:
     req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": USER_AGENT})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
@@ -67,7 +67,7 @@ def fetch(url: str, dest: Path, force: bool = False) -> Path:
                     log.info(f"{dest.name}: {done / 1e6:,.0f}{total} MB")
                     next_report += 200 * CHUNK
     if size is not None and part.stat().st_size != size:
-        raise IOError(f"{dest.name}: expected {size} bytes, got {part.stat().st_size}")
+        raise OSError(f"{dest.name}: expected {size} bytes, got {part.stat().st_size}")
     part.replace(dest)
     log.info("Saved %s", dest)
     return dest
@@ -115,9 +115,7 @@ def latest_onspd_url() -> str:
     return ARCGIS_ITEM_DATA_URL.format(item_id=item_id)
 
 
-def download_onspd(
-    paths: Paths, url: Optional[str] = None, force: bool = False
-) -> Path:
+def download_onspd(paths: Paths, url: str | None = None, force: bool = False) -> Path:
     url = url or latest_onspd_url()
     return fetch(url, paths.onspd_dir / "onspd.zip", force)
 
@@ -132,7 +130,7 @@ def epc_instructions(paths: Paths) -> str:
 
 
 def download_all(
-    paths: Paths, onspd_url: Optional[str] = None, force: bool = False
+    paths: Paths, onspd_url: str | None = None, force: bool = False
 ) -> None:
     paths.raw.mkdir(parents=True, exist_ok=True)
     download_hpi(paths, force)

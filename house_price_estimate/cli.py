@@ -1,19 +1,18 @@
-"""
-Command line interface.
+"""Command line interface.
 
-  download   fetch bulk datasets (the only command that uses the network)
-  build      build the local database from the downloads
-  estimate   value one address or a CSV of addresses, fully offline
-  backtest   measure accuracy on past sales, fully offline
-  calibrate  fit estimate ranges from a backtest, fully offline
+download   fetch bulk datasets (the only command that uses the network)
+build      build the local database from the downloads
+estimate   value one address or a CSV of addresses, fully offline
+backtest   measure accuracy on past sales, fully offline
+calibrate  fit estimate ranges from a backtest, fully offline
 """
 
 import argparse
 import datetime as dt
 import json
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from .config import DEFAULT_DATA_DIR, ModelParams, Paths, calibration_path
 
@@ -71,9 +70,10 @@ def band_label(lower: int, upper) -> str:
 
 
 def _output(v, keep_identifiable: bool) -> dict:
-    """
-    Output fields for one valuation. By default the estimate is replaced by
-    its price band, and low/high are widened outwards to band edges.
+    """Output fields for one valuation.
+
+    By default the estimate is replaced by its price band, and low/high are
+    widened outwards to band edges.
     """
     d = v.as_dict()
     out = {}

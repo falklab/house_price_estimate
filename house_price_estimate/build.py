@@ -1,5 +1,4 @@
-"""
-Convert raw bulk downloads into a single local DuckDB database.
+"""Convert raw bulk downloads into a single local DuckDB database.
 
 Tables:
   onspd  postcode -> easting/northing, local authority, region, LSOA
@@ -11,12 +10,11 @@ Tables:
 
 import csv
 import logging
-from pathlib import Path
 import re
 import shutil
 import tempfile
-from typing import List, Optional
 import zipfile
+from pathlib import Path
 
 import duckdb
 
@@ -55,7 +53,8 @@ CREATE OR REPLACE MACRO norm_pc(s) AS
     CASE WHEN length(squash(s)) BETWEEN 5 AND 7
          THEN left(squash(s), length(squash(s)) - 3) || ' ' || right(squash(s), 3) END;
 CREATE OR REPLACE MACRO num_key(s) AS
-    array_to_string(list_sort(regexp_extract_all(norm_txt(s), '\b[0-9]+[A-Z]?\b')), ' ');
+    array_to_string(
+        list_sort(regexp_extract_all(norm_txt(s), '\b[0-9]+[A-Z]?\b')), ' ');
 CREATE OR REPLACE MACRO addr_key(pc, num_src, name_src) AS
     CASE WHEN num_key(num_src) <> '' THEN pc || '|' || num_key(num_src)
          WHEN norm_txt(name_src) <> '' THEN pc || '|N|' || norm_txt(name_src) END;
@@ -77,12 +76,12 @@ def _sql_str(p: Path) -> str:
     return "'" + str(p).replace("'", "''") + "'"
 
 
-def _csv_header(path: Path) -> List[str]:
+def _csv_header(path: Path) -> list[str]:
     with open(path, newline="", encoding="utf-8-sig", errors="replace") as f:
         return next(csv.reader(f))
 
 
-def _pick(header: List[str], *patterns: str) -> Optional[str]:
+def _pick(header: list[str], *patterns: str) -> str | None:
     """First header column fully matching one of the regexes (case-insensitive)."""
     for pat in patterns:
         for col in header:
@@ -242,14 +241,21 @@ def build_epc(conn, paths: Paths, tmp: Path) -> bool:
                 SELECT norm_pc({q["postcode"]}) AS postcode,
                        {q["address1"]} AS address1, {q["address2"]} AS address2,
                        {q["address3"]} AS address3,
-                       CASE WHEN upper({q["property_type"]}) IN ('FLAT', 'MAISONETTE') THEN 'F'
-                            WHEN upper({q["property_type"]}) IN ('HOUSE', 'BUNGALOW') THEN
-                                CASE WHEN upper({q["built_form"]}) = 'DETACHED' THEN 'D'
-                                     WHEN upper({q["built_form"]}) = 'SEMI-DETACHED' THEN 'S'
-                                     WHEN upper({q["built_form"]}) LIKE '%TERRACE%' THEN 'T' END
+                       CASE
+                         WHEN upper({q["property_type"]}) IN ('FLAT', 'MAISONETTE')
+                           THEN 'F'
+                         WHEN upper({q["property_type"]}) IN ('HOUSE', 'BUNGALOW') THEN
+                           CASE
+                             WHEN upper({q["built_form"]}) = 'DETACHED' THEN 'D'
+                             WHEN upper({q["built_form"]}) = 'SEMI-DETACHED' THEN 'S'
+                             WHEN upper({q["built_form"]}) LIKE '%TERRACE%' THEN 'T'
+                           END
                        END AS ptype,
-                       CASE WHEN TRY_CAST({q["floor_area"]} AS DOUBLE) BETWEEN 10 AND 1500
-                            THEN TRY_CAST({q["floor_area"]} AS DOUBLE) END AS floor_area,
+                       CASE
+                         WHEN TRY_CAST({q["floor_area"]} AS DOUBLE)
+                              BETWEEN 10 AND 1500
+                           THEN TRY_CAST({q["floor_area"]} AS DOUBLE)
+                       END AS floor_area,
                        TRY_CAST({q["rooms"]} AS INTEGER) AS rooms,
                        TRY_CAST(left({q["lodgement"]}, 10) AS DATE) AS lodgement_date
                 FROM read_csv({_sql_str(src)}, header = true, all_varchar = true,
@@ -272,7 +278,8 @@ def build_epc(conn, paths: Paths, tmp: Path) -> bool:
         CREATE OR REPLACE TABLE epc AS
         SELECT * EXCLUDE (rn) FROM (
             SELECT *, row_number() OVER (
-                PARTITION BY postcode, norm_txt(concat_ws(' ', address1, address2, address3))
+                PARTITION BY postcode,
+                             norm_txt(concat_ws(' ', address1, address2, address3))
                 ORDER BY lodgement_date DESC NULLS LAST) AS rn
             FROM epc_raw)
         WHERE rn = 1
@@ -293,7 +300,8 @@ def build_ppd(conn, paths: Paths, with_epc: bool) -> None:
         conn.execute("""
             CREATE OR REPLACE TEMP TABLE epc_link AS
             SELECT key, arg_max(floor_area, lodgement_date) AS floor_area
-            FROM (SELECT addr_key(postcode, concat_ws(' ', address1, address2, address3),
+            FROM (SELECT addr_key(postcode,
+                                  concat_ws(' ', address1, address2, address3),
                                   address1) AS key,
                          norm_txt(concat_ws(' ', address1, address2, address3)) AS addr,
                          floor_area, lodgement_date
@@ -312,12 +320,13 @@ def build_ppd(conn, paths: Paths, with_epc: bool) -> None:
         WITH p AS (
             SELECT TRY_CAST(price AS INTEGER) AS price,
                    TRY_CAST(left(date, 10) AS DATE) AS date,
-                   norm_pc(postcode) AS postcode, ptype, coalesce(new_build = 'Y', false) AS new_build,
+                   norm_pc(postcode) AS postcode, ptype,
+                   coalesce(new_build = 'Y', false) AS new_build,
                    tenure, paon, saon, street, locality, town,
                    addr_key(norm_pc(postcode), concat_ws(' ', saon, paon),
                             concat_ws(' ', saon, paon)) AS key
-            FROM read_csv({_sql_str(paths.ppd_csv)}, header = false, columns = {{{columns}}},
-                          quote = '"')
+            FROM read_csv({_sql_str(paths.ppd_csv)}, header = false,
+                          columns = {{{columns}}}, quote = '"')
             WHERE category = 'A' AND ptype IN ('D', 'S', 'T', 'F')
               AND TRY_CAST(price AS INTEGER) >= 10000
         ),

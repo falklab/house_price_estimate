@@ -1,8 +1,6 @@
-"""
-UK House Price Index lookups for bringing past sale prices up to date.
-"""
+"""UK House Price Index lookups for bringing past sale prices up to date."""
 
-from typing import Iterable, Optional, Sequence, Tuple
+from collections.abc import Iterable, Sequence
 
 import numpy as np
 import pandas as pd
@@ -17,10 +15,11 @@ def month_start(dates) -> pd.DatetimeIndex:
 
 
 class HousePriceIndex:
-    """
-    Index series by (area code, property type). Factors fall back from the
-    local authority to the region to England, and from the property-type
-    index to the all-types index, whichever first has data.
+    """Index series by (area code, property type).
+
+    Factors fall back from the local authority to the region to England, and
+    from the property-type index to the all-types index, whichever first has
+    data.
     """
 
     def __init__(self, df: pd.DataFrame):
@@ -36,14 +35,14 @@ class HousePriceIndex:
         england = self._series[(ENGLAND_CODE, "idx_all")]
         self.last_month = england.index.max()
 
-    def valuation_month(self, as_of: Optional[pd.Timestamp] = None) -> pd.Timestamp:
+    def valuation_month(self, as_of: pd.Timestamp | None = None) -> pd.Timestamp:
         """Latest index month, or the last full month before ``as_of``."""
         if as_of is None:
             return self.last_month
         before = month_start([as_of])[0] - pd.DateOffset(months=1)
         return min(self.last_month, before)
 
-    def _keys(self, areas: Iterable[str], ptype: Optional[str]):
+    def _keys(self, areas: Iterable[str], ptype: str | None):
         for area in [a for a in areas if a] + [ENGLAND_CODE]:
             if ptype:
                 yield (area, f"idx_{ptype}")
@@ -52,13 +51,13 @@ class HousePriceIndex:
     def factors(
         self,
         areas: Sequence[str],
-        ptype: Optional[str],
+        ptype: str | None,
         sale_dates,
         to_month: pd.Timestamp,
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Multipliers taking prices at ``sale_dates`` to ``to_month``, and a
-        label naming the index series used for each.
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Multipliers taking prices at ``sale_dates`` to ``to_month``.
+
+        Also returns a label naming the index series used for each.
         """
         from_months = month_start(sale_dates)
         from_months = from_months.where(from_months <= to_month, to_month)

@@ -1,9 +1,7 @@
-"""
-Match a parsed input address against candidate records in the same postcode.
-"""
+"""Match a parsed input address against candidate records in the same postcode."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import List, Sequence, Tuple
 
 from rapidfuzz import fuzz
 
@@ -15,7 +13,7 @@ class Match:
     status: str
     """'exact', 'fuzzy' or 'none'."""
     score: float = 0.0
-    indices: List[int] = field(default_factory=list)
+    indices: list[int] = field(default_factory=list)
     """Positions of all candidates judged to be the same property."""
 
 
@@ -26,13 +24,14 @@ class Candidate:
     name: str
     """Normalised unit + building part, without street."""
     street: str
-    idents: Tuple[str, ...]
+    idents: tuple[str, ...]
 
 
 def match_address(
     parsed: ParsedAddress, candidates: Sequence[Candidate], fuzzy_threshold: int = 85
 ) -> Match:
-    """
+    """Match a parsed address against the candidates in its postcode.
+
     Numbered addresses must have the same identifiers (same order means
     'exact', same set means 'fuzzy'); ties are broken on the fuzzy similarity
     of the full text, which separates streets sharing a postcode. Unnumbered

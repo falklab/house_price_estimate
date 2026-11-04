@@ -1,13 +1,12 @@
-"""
-Guards that stop address data leaving the machine.
+"""Guards that stop address data leaving the machine.
 
 ``no_network`` blocks Python-level socket connections and DNS lookups.
 ``lock_down_duckdb`` stops DuckDB (which has its own C++ networking) from
 auto-installing extensions or reading anything except the open database.
 """
 
-from contextlib import contextmanager
 import socket
+from contextlib import contextmanager
 
 
 class NetworkForbiddenError(RuntimeError):
