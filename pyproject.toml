@@ -41,3 +41,36 @@ notebook = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+src = [".", "tests"]
+# Notebook code is only changed together with re-running it.
+extend-exclude = ["notebooks"]
+# Apply the excludes to files passed explicitly too (pre-commit).
+force-exclude = true
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+
+[tool.ruff.lint]
+# E/W: pycodestyle (PEP 8), F: pyflakes, I: isort, UP: pyupgrade,
+# B: bugbear, D: pydocstyle
+select = ["E", "W", "F", "I", "UP", "B", "D"]
+# D1xx (missing docstrings) are not enforced yet
+ignore = ["D1"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["house_price_estimate"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Frozen dataclass, safe as a default argument (B008).
+extend-immutable-calls = ["house_price_estimate.config.ModelParams"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
