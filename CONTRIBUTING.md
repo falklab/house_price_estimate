@@ -160,6 +160,8 @@ Users install a release with `pip install git+https://github.com/falklab/house_p
 - **Settings → Actions → General → Workflow permissions**: enable "Allow GitHub Actions to create and approve
   pull requests" (needed by release-please).
 - **Settings → Rules → Rulesets** (requires a paid GitHub plan for private repositories): protect `main`,
-  require a pull request, and require the `lint`, `test` and `conventional-title` checks.
-- Release PRs are opened by the Actions bot, so CI does not run on them. This is fine, because they only
-  change the version and changelog.
+  require a pull request, and require the `lint`, `test` and `conventional-title` checks. Add the
+  **Repository admin** role to the ruleset's bypass list.
+- Release PRs are opened by the Actions bot with `GITHUB_TOKEN`, so no workflows run on them and the
+  required checks never report. An admin merges them with the bypass ("Merge without waiting for
+  requirements to be met"). This is safe, because they only change the version and changelog.
