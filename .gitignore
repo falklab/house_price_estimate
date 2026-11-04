@@ -28,3 +28,6 @@ coverage.xml
 build/
 dist/
 *.egg-info/
+
+# Personal Claude Code settings (shared ones go in .claude/settings.json)
+.claude/settings.local.json

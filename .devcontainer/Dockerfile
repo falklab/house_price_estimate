@@ -18,3 +18,9 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list \
     && DEBIAN_FRONTEND=noninteractive \
         apt-get install --yes --no-install-recommends gh \
     && rm -rf /var/lib/apt/lists/*
+
+# Mount points for the Claude Code and GitHub CLI config volumes (see
+# devcontainer.json). They must exist and be owned by vscode, or the new
+# volumes are owned by root.
+RUN install -d -o vscode -g vscode \
+        /home/vscode/.claude /home/vscode/.config /home/vscode/.config/gh
