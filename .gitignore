@@ -5,6 +5,26 @@ data/
 # Inputs/outputs may contain personal addresses
 *.csv
 *.tsv
-.venv/
+
+# PyCharm / JetBrains IDE config
+.idea/
+
+# Python bytecode
 __pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+
+# Tool caches and coverage
 .pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Build artefacts
+build/
+dist/
+*.egg-info/

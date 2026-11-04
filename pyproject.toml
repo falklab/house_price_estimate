@@ -1,0 +1,43 @@
+[project]
+name = "house_price_estimate"
+version = "0.1.0"
+description = "Offline estimation of current house prices for addresses in England."
+authors = [{ name = "Anthony Duncan", email = "anthony.duncan@earlham.ac.uk" }]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb>=1.1",
+    "pandas>=2.2",
+    "pyarrow>=15",
+    "rapidfuzz>=3.0",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+house-price-estimate = "house_price_estimate.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/falklab/house_price_estimate"
+Issues = "https://github.com/falklab/house_price_estimate/issues"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.0",
+    "pytest>=8.2.1",
+    "pytest-cov>=6.0",
+    "ruff>=0.14",
+]
+# notebooks/performance.ipynb only: uv sync --group notebook
+notebook = [
+    "ipykernel>=6",
+    "matplotlib>=3.8",
+    "nbconvert>=7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
