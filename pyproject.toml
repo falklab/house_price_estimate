@@ -1,0 +1,94 @@
+[project]
+name = "house_price_estimate"
+version = "0.1.0"
+description = "Offline estimation of current house prices for addresses in England."
+authors = [{ name = "Anthony Duncan", email = "anthony.duncan@earlham.ac.uk" }]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb>=1.1",
+    "pandas>=2.2",
+    "pyarrow>=15",
+    "rapidfuzz>=3.0",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+house-price-estimate = "house_price_estimate.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/falklab/house_price_estimate"
+Issues = "https://github.com/falklab/house_price_estimate/issues"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.0",
+    "pytest>=8.2.1",
+    "pytest-cov>=6.0",
+    "ruff>=0.14",
+]
+# notebooks/performance.ipynb only: uv sync --group notebook
+notebook = [
+    "ipykernel>=6",
+    "matplotlib>=3.8",
+    "nbconvert>=7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+src = [".", "tests"]
+# Notebook code is only changed together with re-running it.
+extend-exclude = ["notebooks"]
+# Apply the excludes to files passed explicitly too (pre-commit).
+force-exclude = true
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+
+[tool.ruff.lint]
+# E/W: pycodestyle (PEP 8), F: pyflakes, I: isort, UP: pyupgrade,
+# B: bugbear, D: pydocstyle
+select = ["E", "W", "F", "I", "UP", "B", "D"]
+# D1xx (missing docstrings) are not enforced yet
+ignore = ["D1"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["house_price_estimate"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Frozen dataclass, safe as a default argument (B008).
+extend-immutable-calls = ["house_price_estimate.config.ModelParams"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "local_data: needs large local test data not in the repo (HOUSE_PRICE_ESTIMATE_LOCAL_DATA)",
+    "slow: takes more than a couple of seconds; skipped by the pre-commit hook",
+]
+
+[tool.coverage.run]
+source = ["house_price_estimate"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+# Baseline at time of setup; raise as coverage improves
+fail_under = 80
