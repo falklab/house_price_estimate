@@ -23,15 +23,32 @@ log = logging.getLogger("house_price_estimate")
 # deterministic on public data, so precise values can be matched against
 # estimates for every address in an area. Dropped unless --keep-identifiable.
 IDENTIFIABLE = (
-    "postcode", "property_type", "floor_area", "n_sales", "last_sale_price",
-    "last_sale_date", "last_sale_new_build", "comps_floor_area_adjusted", "hpi_series",
-    "repeat_sale_est", "repeat_weight", "comps_est", "comps_n", "comps_radius_m",
-    "ppd_match_score", "estimate",
+    "postcode",
+    "property_type",
+    "floor_area",
+    "n_sales",
+    "last_sale_price",
+    "last_sale_date",
+    "last_sale_new_build",
+    "comps_floor_area_adjusted",
+    "hpi_series",
+    "repeat_sale_est",
+    "repeat_weight",
+    "comps_est",
+    "comps_n",
+    "comps_radius_m",
+    "ppd_match_score",
+    "estimate",
 )
 
 # (upper limit, band width): £25k bands below £500k, £50k to £1m, £250k to
 # £2m, £1m to £5m, then one open band.
-BAND_STEPS = ((500_000, 25_000), (1_000_000, 50_000), (2_000_000, 250_000), (5_000_000, 1_000_000))
+BAND_STEPS = (
+    (500_000, 25_000),
+    (1_000_000, 50_000),
+    (2_000_000, 250_000),
+    (5_000_000, 1_000_000),
+)
 
 
 def price_band(x: float) -> tuple:
@@ -135,14 +152,19 @@ def _calibrate(args, paths: Paths) -> None:
     out = calibration_path(paths.processed, params.use_epc)
     out.write_text(json.dumps(result, indent=2) + "\n")
     for name, g in result["groups"].items():
-        log.info(f"{name:22s} n={g['n']:5d}  80% range x{g['q10']:.2f}-x{g['q90']:.2f}  "
-                 f"median error {g['median_ape']:.1%}")
+        log.info(
+            f"{name:22s} n={g['n']:5d}  80% range x{g['q10']:.2f}-x{g['q90']:.2f}  "
+            f"median error {g['median_ape']:.1%}"
+        )
     log.info("Wrote %s", out)
 
 
 def main(argv=None) -> None:
-    parser = argparse.ArgumentParser(prog="house_price_estimate", description=__doc__,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        prog="house_price_estimate",
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
     parser.add_argument("-v", "--verbose", action="store_true")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -161,12 +183,19 @@ def main(argv=None) -> None:
     p.add_argument("--address-col", default="address")
     p.add_argument("--postcode-col", help="optional separate postcode column")
     p.add_argument("--id-col", help="identifier column copied to the output")
-    p.add_argument("--keep-address", action="store_true",
-                   help="copy the address into the output (off by default)")
-    p.add_argument("--keep-identifiable", action="store_true",
-                   help="include the exact estimate and range, and fields that could "
-                        "identify the property: " + ", ".join(IDENTIFIABLE)
-                        + " (off by default: the estimate is given as a price band)")
+    p.add_argument(
+        "--keep-address",
+        action="store_true",
+        help="copy the address into the output (off by default)",
+    )
+    p.add_argument(
+        "--keep-identifiable",
+        action="store_true",
+        help="include the exact estimate and range, and fields that could "
+        "identify the property: "
+        + ", ".join(IDENTIFIABLE)
+        + " (off by default: the estimate is given as a price band)",
+    )
     p.add_argument("--out", type=Path, help="output CSV (required with --input)")
     p.add_argument("--no-epc", action="store_true", help="ignore EPC floor areas")
 
@@ -177,28 +206,39 @@ def main(argv=None) -> None:
     p.add_argument("--out", type=Path, help="optional per-sale results CSV")
     p.add_argument("--no-epc", action="store_true")
 
-    p = sub.add_parser("calibrate", help="fit estimate ranges from a backtest (offline)")
-    p.add_argument("--year", type=int, default=dt.date.today().year - 2,
-                   help="year of sales to calibrate on (default: two years ago)")
+    p = sub.add_parser(
+        "calibrate", help="fit estimate ranges from a backtest (offline)"
+    )
+    p.add_argument(
+        "--year",
+        type=int,
+        default=dt.date.today().year - 2,
+        help="year of sales to calibrate on (default: two years ago)",
+    )
     p.add_argument("--n", type=int, default=10000)
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--no-epc", action="store_true")
 
     args = parser.parse_args(argv)
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
-                        format="%(asctime)s %(levelname)s %(message)s")
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+    )
     paths = Paths(args.data_dir)
 
     if args.command == "download":
         from .download import download_all
+
         download_all(paths, args.onspd_url, args.force)
     elif args.command == "build":
         from .build import build_all
+
         build_all(paths, args.skip_epc)
     else:
         if args.command == "estimate" and args.input and not args.out:
             parser.error("--out is required with --input")
         from .offline import no_network
+
         run = {"estimate": _estimate, "backtest": _backtest, "calibrate": _calibrate}
         with no_network():
             run[args.command](args, paths)

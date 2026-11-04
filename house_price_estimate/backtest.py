@@ -20,13 +20,25 @@ log = logging.getLogger(__name__)
 
 
 def _address(row) -> str:
-    parts = [_s(row.saon), f"{_s(row.paon)} {_s(row.street)}".strip(), _s(row.town), row.postcode]
+    parts = [
+        _s(row.saon),
+        f"{_s(row.paon)} {_s(row.street)}".strip(),
+        _s(row.town),
+        row.postcode,
+    ]
     return ", ".join(p for p in parts if p)
 
 
-def sample_sales(est: Estimator, year: Optional[int], n: int, seed: int = 1,
-                 start=None, end=None, counties: Sequence[str] = (),
-                 england_only: bool = False) -> pd.DataFrame:
+def sample_sales(
+    est: Estimator,
+    year: Optional[int],
+    n: int,
+    seed: int = 1,
+    start=None,
+    end=None,
+    counties: Sequence[str] = (),
+    england_only: bool = False,
+) -> pd.DataFrame:
     """
     Random non-new-build sales in ``year``, or from ``start`` (inclusive) to
     ``end`` (exclusive), optionally only in the given ONSPD county codes
@@ -54,23 +66,35 @@ def sample_sales(est: Estimator, year: Optional[int], n: int, seed: int = 1,
         f"""
         SELECT * FROM (
             SELECT p.price, p.date, p.postcode, p.ptype, p.paon, p.saon, p.street, p.town
-            FROM ppd p {join} WHERE {' AND '.join(where)})
+            FROM ppd p {join} WHERE {" AND ".join(where)})
         USING SAMPLE reservoir({int(n)} ROWS) REPEATABLE ({int(seed)})
         """,
         args,
     ).df()
 
 
-def run_backtest(est: Estimator, year: Optional[int], n: int, seed: int = 1,
-                 sales: Optional[pd.DataFrame] = None, **sample_kw) -> pd.DataFrame:
+def run_backtest(
+    est: Estimator,
+    year: Optional[int],
+    n: int,
+    seed: int = 1,
+    sales: Optional[pd.DataFrame] = None,
+    **sample_kw,
+) -> pd.DataFrame:
     """Value sampled sales as of their sale date. ``sales`` reuses a sample."""
     if sales is None:
         sales = sample_sales(est, year, n, seed, **sample_kw)
     rows = []
     for i, row in enumerate(sales.itertuples(index=False), 1):
         v = est.estimate_address(_address(row), as_of=row.date)
-        rows.append({"actual": row.price, "sale_date": row.date, "actual_type": row.ptype,
-                     **v.as_dict()})
+        rows.append(
+            {
+                "actual": row.price,
+                "sale_date": row.date,
+                "actual_type": row.ptype,
+                **v.as_dict(),
+            }
+        )
         if i % 250 == 0:
             log.info("backtest %d/%d", i, len(sales))
     out = pd.DataFrame(rows)
@@ -81,15 +105,19 @@ def run_backtest(est: Estimator, year: Optional[int], n: int, seed: int = 1,
 def summarise(df: pd.DataFrame) -> pd.DataFrame:
     def stats(g):
         e = g["error"].dropna().abs()
-        return pd.Series({
-            "n": len(g),
-            "estimated": len(e),
-            "median_ape": e.median(),
-            "within_10pct": (e <= 0.10).mean(),
-            "within_20pct": (e <= 0.20).mean(),
-            "median_signed_error": g["error"].median(),
-            "in_range": ((g["actual"] >= g["low"]) & (g["actual"] <= g["high"])).mean(),
-        })
+        return pd.Series(
+            {
+                "n": len(g),
+                "estimated": len(e),
+                "median_ape": e.median(),
+                "within_10pct": (e <= 0.10).mean(),
+                "within_20pct": (e <= 0.20).mean(),
+                "median_signed_error": g["error"].median(),
+                "in_range": (
+                    (g["actual"] >= g["low"]) & (g["actual"] <= g["high"])
+                ).mean(),
+            }
+        )
 
     overall = stats(df).to_frame("all").T
     by_method = df.groupby("method").apply(stats, include_groups=False)
@@ -102,7 +130,9 @@ def summarise(df: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([overall, by_method, by_conf, by_match, by_group])
 
 
-def calibrate(est: Estimator, year: int, n: int, seed: int = 1, min_group: int = 50) -> dict:
+def calibrate(
+    est: Estimator, year: int, n: int, seed: int = 1, min_group: int = 50
+) -> dict:
     """
     10th/90th percentiles of actual / estimate per calibration group, from
     a backtest. Groups with fewer than ``min_group`` sales use 'all'.

@@ -15,9 +15,7 @@ class NetworkForbiddenError(RuntimeError):
 
 
 def _forbidden(*args, **kwargs):
-    raise NetworkForbiddenError(
-        "Network access is forbidden while handling addresses."
-    )
+    raise NetworkForbiddenError("Network access is forbidden while handling addresses.")
 
 
 _PATCHES = {
@@ -47,17 +45,23 @@ def no_network():
 
 def lock_down_duckdb(conn) -> None:
     """Disable extension autoloading and external file/HTTP access."""
-    settings = dict(conn.execute(
-        "SELECT name, value FROM duckdb_settings() WHERE name IN ("
-        "'autoinstall_known_extensions', 'autoload_known_extensions', "
-        "'enable_external_access', 'lock_configuration')"
-    ).fetchall())
+    settings = dict(
+        conn.execute(
+            "SELECT name, value FROM duckdb_settings() WHERE name IN ("
+            "'autoinstall_known_extensions', 'autoload_known_extensions', "
+            "'enable_external_access', 'lock_configuration')"
+        ).fetchall()
+    )
     if settings.get("lock_configuration") == "true":
         # Connections to the same file in one process share an instance,
         # which an earlier Estimator may already have locked.
-        unsafe = [k for k, v in settings.items() if k != "lock_configuration" and v != "false"]
+        unsafe = [
+            k for k, v in settings.items() if k != "lock_configuration" and v != "false"
+        ]
         if unsafe:
-            raise RuntimeError(f"DuckDB configuration locked with unsafe settings: {unsafe}")
+            raise RuntimeError(
+                f"DuckDB configuration locked with unsafe settings: {unsafe}"
+            )
         return
     conn.execute("SET autoinstall_known_extensions = false")
     conn.execute("SET autoload_known_extensions = false")

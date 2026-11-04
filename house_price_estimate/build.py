@@ -97,6 +97,7 @@ def _quote(col: str) -> str:
 
 # --- ONSPD ------------------------------------------------------------------
 
+
 def _onspd_csv(onspd_dir: Path, tmp: Path) -> Path:
     """Return the main ONSPD CSV, extracting it from the zip if needed."""
     csvs = sorted(onspd_dir.glob("*.csv"), key=lambda p: p.stat().st_size)
@@ -107,8 +108,10 @@ def _onspd_csv(onspd_dir: Path, tmp: Path) -> Path:
         raise FileNotFoundError(f"No ONSPD zip or csv in {onspd_dir}")
     with zipfile.ZipFile(zips[-1]) as z:
         members = [
-            m for m in z.infolist()
-            if m.filename.lower().endswith(".csv") and "multi_csv" not in m.filename.lower()
+            m
+            for m in z.infolist()
+            if m.filename.lower().endswith(".csv")
+            and "multi_csv" not in m.filename.lower()
         ]
         member = max(members, key=lambda m: m.file_size)
         log.info("Extracting %s", member.filename)
@@ -134,26 +137,31 @@ def build_onspd(conn, paths: Paths, tmp: Path) -> None:
     if missing:
         raise ValueError(f"ONSPD columns not found: {missing}")
     # Optional: county and 2021 Rural Urban Classification (for reporting).
-    optional = {"cty": _pick(header, r"cty\d\dcd", "oscty"),
-                "ruc21": _pick(header, "ruc21ind")}
+    optional = {
+        "cty": _pick(header, r"cty\d\dcd", "oscty"),
+        "ruc21": _pick(header, "ruc21ind"),
+    }
     q = {k: _quote(v) for k, v in cols.items()}
-    extra = "".join(f", {_quote(v) if v else 'NULL::VARCHAR'} AS {k}" for k, v in optional.items())
+    extra = "".join(
+        f", {_quote(v) if v else 'NULL::VARCHAR'} AS {k}" for k, v in optional.items()
+    )
     log.info("Building onspd from %s", path.name)
     conn.execute(f"""
         CREATE OR REPLACE TABLE onspd AS
-        SELECT norm_pc({q['postcode']}) AS postcode,
-               TRY_CAST({q['east']} AS INTEGER) AS east,
-               TRY_CAST({q['north']} AS INTEGER) AS north,
-               {q['lad']} AS lad, {q['rgn']} AS rgn, {q['lsoa']} AS lsoa{extra}
+        SELECT norm_pc({q["postcode"]}) AS postcode,
+               TRY_CAST({q["east"]} AS INTEGER) AS east,
+               TRY_CAST({q["north"]} AS INTEGER) AS north,
+               {q["lad"]} AS lad, {q["rgn"]} AS rgn, {q["lsoa"]} AS lsoa{extra}
         FROM read_csv({_sql_str(path)}, header = true, all_varchar = true)
-        WHERE {q['ctry']} IN ('{ENGLAND_CODE}', '{WALES_CODE}')
-          AND TRY_CAST({q['east']} AS INTEGER) > 0
-          AND norm_pc({q['postcode']}) IS NOT NULL
+        WHERE {q["ctry"]} IN ('{ENGLAND_CODE}', '{WALES_CODE}')
+          AND TRY_CAST({q["east"]} AS INTEGER) > 0
+          AND norm_pc({q["postcode"]}) IS NOT NULL
         ORDER BY postcode
     """)
 
 
 # --- UK HPI -----------------------------------------------------------------
+
 
 def build_hpi(conn, paths: Paths) -> None:
     header = _csv_header(paths.hpi_csv)
@@ -168,14 +176,19 @@ def build_hpi(conn, paths: Paths) -> None:
     for alias, name in want.items():
         col = _pick(header, name)
         select.append(
-            f"TRY_CAST({_quote(col)} AS DOUBLE) AS {alias}" if col else f"NULL::DOUBLE AS {alias}"
+            f"TRY_CAST({_quote(col)} AS DOUBLE) AS {alias}"
+            if col
+            else f"NULL::DOUBLE AS {alias}"
         )
-    date_col, area_col = _quote(_pick(header, "Date")), _quote(_pick(header, "AreaCode"))
+    date_col, area_col = (
+        _quote(_pick(header, "Date")),
+        _quote(_pick(header, "AreaCode")),
+    )
     log.info("Building hpi")
     conn.execute(f"""
         CREATE OR REPLACE TABLE hpi AS
         SELECT strptime({date_col}, '%d/%m/%Y')::DATE AS month,
-               {area_col} AS area, {', '.join(select)}
+               {area_col} AS area, {", ".join(select)}
         FROM read_csv({_sql_str(paths.hpi_csv)}, header = true, all_varchar = true)
         ORDER BY area, month
     """)
@@ -226,22 +239,22 @@ def build_epc(conn, paths: Paths, tmp: Path) -> bool:
                 continue
             q = {k: (_quote(v) if v else "NULL") for k, v in cols.items()}
             body = f"""
-                SELECT norm_pc({q['postcode']}) AS postcode,
-                       {q['address1']} AS address1, {q['address2']} AS address2,
-                       {q['address3']} AS address3,
-                       CASE WHEN upper({q['property_type']}) IN ('FLAT', 'MAISONETTE') THEN 'F'
-                            WHEN upper({q['property_type']}) IN ('HOUSE', 'BUNGALOW') THEN
-                                CASE WHEN upper({q['built_form']}) = 'DETACHED' THEN 'D'
-                                     WHEN upper({q['built_form']}) = 'SEMI-DETACHED' THEN 'S'
-                                     WHEN upper({q['built_form']}) LIKE '%TERRACE%' THEN 'T' END
+                SELECT norm_pc({q["postcode"]}) AS postcode,
+                       {q["address1"]} AS address1, {q["address2"]} AS address2,
+                       {q["address3"]} AS address3,
+                       CASE WHEN upper({q["property_type"]}) IN ('FLAT', 'MAISONETTE') THEN 'F'
+                            WHEN upper({q["property_type"]}) IN ('HOUSE', 'BUNGALOW') THEN
+                                CASE WHEN upper({q["built_form"]}) = 'DETACHED' THEN 'D'
+                                     WHEN upper({q["built_form"]}) = 'SEMI-DETACHED' THEN 'S'
+                                     WHEN upper({q["built_form"]}) LIKE '%TERRACE%' THEN 'T' END
                        END AS ptype,
-                       CASE WHEN TRY_CAST({q['floor_area']} AS DOUBLE) BETWEEN 10 AND 1500
-                            THEN TRY_CAST({q['floor_area']} AS DOUBLE) END AS floor_area,
-                       TRY_CAST({q['rooms']} AS INTEGER) AS rooms,
-                       TRY_CAST(left({q['lodgement']}, 10) AS DATE) AS lodgement_date
+                       CASE WHEN TRY_CAST({q["floor_area"]} AS DOUBLE) BETWEEN 10 AND 1500
+                            THEN TRY_CAST({q["floor_area"]} AS DOUBLE) END AS floor_area,
+                       TRY_CAST({q["rooms"]} AS INTEGER) AS rooms,
+                       TRY_CAST(left({q["lodgement"]}, 10) AS DATE) AS lodgement_date
                 FROM read_csv({_sql_str(src)}, header = true, all_varchar = true,
                               ignore_errors = true)
-                WHERE norm_pc({q['postcode']}) IS NOT NULL
+                WHERE norm_pc({q["postcode"]}) IS NOT NULL
             """
             if loaded == 0:
                 conn.execute(f"CREATE TABLE epc_raw AS {body}")
@@ -249,7 +262,9 @@ def build_epc(conn, paths: Paths, tmp: Path) -> bool:
                 conn.execute(f"INSERT INTO epc_raw {body}")
             loaded += 1
     if not loaded:
-        log.info("No EPC data found in %s; floor areas will be unavailable", paths.epc_dir)
+        log.info(
+            "No EPC data found in %s; floor areas will be unavailable", paths.epc_dir
+        )
         conn.execute("DROP TABLE IF EXISTS epc")
         return False
     log.info("Loaded %d EPC file(s); keeping latest certificate per address", loaded)
@@ -268,6 +283,7 @@ def build_epc(conn, paths: Paths, tmp: Path) -> bool:
 
 
 # --- PPD --------------------------------------------------------------------
+
 
 def build_ppd(conn, paths: Paths, with_epc: bool) -> None:
     columns = ", ".join(f"'{k}': '{v}'" for k, v in PPD_COLUMNS.items())

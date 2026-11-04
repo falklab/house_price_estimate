@@ -79,10 +79,20 @@ def weighted_quantile(values, weights, q):
 def calibration_group(v: "Valuation") -> Optional[str]:
     """Which empirical error distribution an estimate's range comes from."""
     if v.method == "repeat_sale+comparables":
-        years = (pd.Timestamp(v.valuation_month) - pd.Timestamp(v.last_sale_date)).days / 365.25
-        return "repeat_le5y" if years <= 5 else "repeat_5_15y" if years <= 15 else "repeat_gt15y"
+        years = (
+            pd.Timestamp(v.valuation_month) - pd.Timestamp(v.last_sale_date)
+        ).days / 365.25
+        return (
+            "repeat_le5y"
+            if years <= 5
+            else "repeat_5_15y"
+            if years <= 15
+            else "repeat_gt15y"
+        )
     if v.method == "comparables":
-        return "comps_floor_area" if v.comps_floor_area_adjusted else "comps_no_floor_area"
+        return (
+            "comps_floor_area" if v.comps_floor_area_adjusted else "comps_no_floor_area"
+        )
     if v.method == "repeat_sale":
         return "repeat_only"
     return None
@@ -97,7 +107,9 @@ def ppd_candidates(df: pd.DataFrame) -> List[Candidate]:
     for saon, paon, street in zip(df["saon"], df["paon"], df["street"]):
         unit = normalise_text(f"{_s(saon)} {_s(paon)}")
         street = normalise_text(_s(street))
-        out.append(Candidate(f"{unit} {street}".strip(), unit, street, identifiers(unit)))
+        out.append(
+            Candidate(f"{unit} {street}".strip(), unit, street, identifiers(unit))
+        )
     return out
 
 
@@ -153,8 +165,12 @@ class Estimator:
         return self._df(
             f"SELECT {PPD_COLS} FROM ppd WHERE gx = ? AND gy = ? AND postcode = ? "
             "AND date < ? ORDER BY date",
-            [int(loc["east"]) // GRID_SIZE_M, int(loc["north"]) // GRID_SIZE_M,
-             postcode, before],
+            [
+                int(loc["east"]) // GRID_SIZE_M,
+                int(loc["north"]) // GRID_SIZE_M,
+                postcode,
+                before,
+            ],
         )
 
     def _postcode_epc(self, postcode: str) -> pd.DataFrame:
@@ -173,9 +189,15 @@ class Estimator:
                 f"SELECT {PPD_COLS} FROM ppd "
                 "WHERE gx BETWEEN ? AND ? AND gy BETWEEN ? AND ? "
                 "AND ptype = ? AND date >= ? AND date < ?",
-                [int(e - radius) // GRID_SIZE_M, int(e + radius) // GRID_SIZE_M,
-                 int(n - radius) // GRID_SIZE_M, int(n + radius) // GRID_SIZE_M,
-                 ptype, start, before],
+                [
+                    int(e - radius) // GRID_SIZE_M,
+                    int(e + radius) // GRID_SIZE_M,
+                    int(n - radius) // GRID_SIZE_M,
+                    int(n + radius) // GRID_SIZE_M,
+                    ptype,
+                    start,
+                    before,
+                ],
             )
             df["dist"] = np.hypot(df["east"] - e, df["north"] - n)
             df = df[df["dist"] <= radius]
@@ -217,7 +239,9 @@ class Estimator:
         sales = self._postcode_sales(parsed.postcode, loc, before)
         m = match_address(parsed, ppd_candidates(sales), p.fuzzy_threshold)
         v.ppd_match, v.ppd_match_score = m.status, m.score
-        own = sales.iloc[m.indices].sort_values("date") if m.indices else sales.iloc[0:0]
+        own = (
+            sales.iloc[m.indices].sort_values("date") if m.indices else sales.iloc[0:0]
+        )
 
         epc = None
         if self.has_epc:
@@ -261,7 +285,11 @@ class Estimator:
         start = (to_month - pd.DateOffset(months=round(12 * p.comp_years))).date()
         exclude = None
         if len(own):
-            exclude = (parsed.postcode, _s(own["paon"].iloc[-1]), _s(own["saon"].iloc[-1]))
+            exclude = (
+                parsed.postcode,
+                _s(own["paon"].iloc[-1]),
+                _s(own["saon"].iloc[-1]),
+            )
         comps, radius = self._comparables(loc, v.property_type, start, before, exclude)
         spread = None
         if len(comps):
@@ -270,19 +298,23 @@ class Estimator:
                 factor[pos], _ = self.hpi.factors(
                     [lad, rgn], v.property_type, comps["date"].iloc[pos], to_month
                 )
-            comps = comps.assign(indexed=comps["price"].to_numpy() * factor).dropna(subset=["indexed"])
-            age = (to_month - pd.to_datetime(comps["date"])).dt.days / 365.25
-            comps["w"] = (1 / (1 + (comps["dist"] / p.distance_scale_m) ** 2)) * 0.5 ** (
-                age.clip(lower=0) / p.age_half_life_years
+            comps = comps.assign(indexed=comps["price"].to_numpy() * factor).dropna(
+                subset=["indexed"]
             )
+            age = (to_month - pd.to_datetime(comps["date"])).dt.days / 365.25
+            comps["w"] = (
+                1 / (1 + (comps["dist"] / p.distance_scale_m) ** 2)
+            ) * 0.5 ** (age.clip(lower=0) / p.age_half_life_years)
             comps = comps.nlargest(p.comp_max_n, "w")
         if len(comps):
             values = comps["indexed"].to_numpy()
             weights = comps["w"].to_numpy()
             with_area = comps["floor_area"].notna().to_numpy()
-            if v.floor_area and with_area.sum() >= max(p.min_floor_area_comps, len(comps) // 2):
+            if v.floor_area and with_area.sum() >= max(
+                p.min_floor_area_comps, len(comps) // 2
+            ):
                 ratio = v.floor_area / comps["floor_area"].to_numpy()[with_area]
-                values = values[with_area] * ratio ** p.floor_area_elasticity
+                values = values[with_area] * ratio**p.floor_area_elasticity
                 weights = weights[with_area]
                 v.comps_floor_area_adjusted = True
             v.comps_n, v.comps_radius_m = len(values), int(radius)
@@ -293,7 +325,9 @@ class Estimator:
         # Blend
         if v.repeat_sale_est is not None and v.comps_est is not None:
             years = (to_month - pd.Timestamp(v.last_sale_date)).days / 365.25
-            w = p.repeat_weight_max * math.exp(-max(years, 0) / p.repeat_weight_decay_years)
+            w = p.repeat_weight_max * math.exp(
+                -max(years, 0) / p.repeat_weight_decay_years
+            )
             if v.last_sale_new_build:
                 w *= p.new_build_repeat_penalty
             v.repeat_weight = w
@@ -311,8 +345,11 @@ class Estimator:
             return v
 
         v.calibration_group = calibration_group(v)
-        groups = {k: g for k, g in (self.calibration or {}).get("groups", {}).items()
-                  if k != "all"}
+        groups = {
+            k: g
+            for k, g in (self.calibration or {}).get("groups", {}).items()
+            if k != "all"
+        }
         if groups:
             # Empirical 10th/90th percentiles of actual / estimate. A group
             # too rare to calibrate gets the widest range and low confidence.
@@ -342,11 +379,9 @@ class Estimator:
     def _confidence(self, v: Valuation) -> str:
         """Rule-based fallback used when there is no calibration file."""
         matched = v.ppd_match == "exact" or v.epc_match == "exact"
-        recent = (
-            v.repeat_sale_est is not None
-            and pd.Timestamp(v.valuation_month) - pd.Timestamp(v.last_sale_date)
-            <= pd.Timedelta(days=round(365.25 * 15))
-        )
+        recent = v.repeat_sale_est is not None and pd.Timestamp(
+            v.valuation_month
+        ) - pd.Timestamp(v.last_sale_date) <= pd.Timedelta(days=round(365.25 * 15))
         enough = v.comps_n >= self.params.comp_min_n
         if matched and enough and (recent or v.comps_floor_area_adjusted):
             return "high"

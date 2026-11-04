@@ -51,7 +51,9 @@ def match_address(
             status = "fuzzy"
         if not ordered:
             return Match("none")
-        scores = {i: fuzz.token_set_ratio(parsed.text, candidates[i].text) for i in ordered}
+        scores = {
+            i: fuzz.token_set_ratio(parsed.text, candidates[i].text) for i in ordered
+        }
         best = max(ordered, key=lambda i: scores[i])
         if scores[best] < 50:
             status = "fuzzy"

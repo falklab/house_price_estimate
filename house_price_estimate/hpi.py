@@ -29,7 +29,9 @@ class HousePriceIndex:
         for col in INDEX_COLUMNS:
             sub = df[["area", "month", col]].dropna()
             for area, g in sub.groupby("area"):
-                s = pd.Series(g[col].to_numpy(float), index=pd.DatetimeIndex(g["month"]))
+                s = pd.Series(
+                    g[col].to_numpy(float), index=pd.DatetimeIndex(g["month"])
+                )
                 self._series[(area, col)] = s.sort_index()
         england = self._series[(ENGLAND_CODE, "idx_all")]
         self.last_month = england.index.max()

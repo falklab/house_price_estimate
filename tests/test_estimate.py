@@ -17,7 +17,9 @@ def est(paths):
 
 def test_build_filters_and_links(paths):
     conn = duckdb.connect(str(paths.db), read_only=True)
-    assert conn.execute("SELECT count(*) FROM onspd").fetchone()[0] == 3  # Scotland dropped
+    assert (
+        conn.execute("SELECT count(*) FROM onspd").fetchone()[0] == 3
+    )  # Scotland dropped
     ppd = conn.execute("SELECT * FROM ppd").df()
     assert len(ppd) == 15  # category B and type O dropped
     assert set(ppd["ptype"]) == {"T", "F"}
@@ -69,10 +71,13 @@ def test_without_epc(paths):
     e.close()
 
 
-@pytest.mark.parametrize("address, status", [
-    ("10 Test Road, Norwich", "no_postcode"),
-    ("10 Test Road, ZZ9 9ZZ", "postcode_not_found"),
-])
+@pytest.mark.parametrize(
+    "address, status",
+    [
+        ("10 Test Road, Norwich", "no_postcode"),
+        ("10 Test Road, ZZ9 9ZZ", "postcode_not_found"),
+    ],
+)
 def test_bad_postcodes(est, address, status):
     assert est.estimate_address(address).status == status
 
@@ -90,10 +95,14 @@ def test_backtest_runs(est):
 
 def test_backtest_date_range_and_county(est):
     from house_price_estimate.backtest import sample_sales
+
     by_year = sample_sales(est, 2025, 100)
     by_range = sample_sales(est, None, 100, start="2025-01-01", end="2026-01-01")
     assert len(by_range) == len(by_year) == 4
-    assert len(sample_sales(est, None, 100, start="2025-01-01", counties=["E10000020"])) >= 4
+    assert (
+        len(sample_sales(est, None, 100, start="2025-01-01", counties=["E10000020"]))
+        >= 4
+    )
     assert len(sample_sales(est, 2025, 100, counties=["E10000029"])) == 0
     assert len(sample_sales(est, 2025, 100, england_only=True)) == 4
     conn = est.conn
@@ -104,23 +113,53 @@ def test_cli_batch(paths, tmp_path):
     src = tmp_path / "in.csv"
     src.write_text('id,address\n1,"10 Test Road, NR4 7AA"\n2,"nowhere"\n')
     out = tmp_path / "out.csv"
-    main(["--data-dir", str(paths.data_dir), "estimate", "--input", str(src),
-          "--id-col", "id", "--out", str(out)])
+    main(
+        [
+            "--data-dir",
+            str(paths.data_dir),
+            "estimate",
+            "--input",
+            str(src),
+            "--id-col",
+            "id",
+            "--out",
+            str(out),
+        ]
+    )
     import pandas as pd
+
     res = pd.read_csv(out)
     assert list(res["id"]) == [1, 2]
     assert "address" not in res.columns
     assert list(res["status"]) == ["ok", "no_postcode"]
     assert not set(IDENTIFIABLE) & set(res.columns)
-    assert {"price_band", "price_band_low", "price_band_high", "low", "high",
-            "confidence"} <= set(res.columns)
+    assert {
+        "price_band",
+        "price_band_low",
+        "price_band_high",
+        "low",
+        "high",
+        "confidence",
+    } <= set(res.columns)
     ok = res.loc[0]
     assert ok["low"] <= ok["price_band_low"] < ok["price_band_high"] <= ok["high"]
     assert ok["price_band_mid"] == (ok["price_band_low"] + ok["price_band_high"]) / 2
     assert ok["low"] % 25000 == 0 and ok["high"] % 25000 == 0
     assert res.loc[1, ["price_band", "price_band_mid", "low", "high"]].isna().all()
-    main(["--data-dir", str(paths.data_dir), "estimate", "--input", str(src),
-          "--id-col", "id", "--out", str(out), "--keep-identifiable"])
+    main(
+        [
+            "--data-dir",
+            str(paths.data_dir),
+            "estimate",
+            "--input",
+            str(src),
+            "--id-col",
+            "id",
+            "--out",
+            str(out),
+            "--keep-identifiable",
+        ]
+    )
     res = pd.read_csv(out)
     assert set(IDENTIFIABLE) <= set(res.columns)
     exact = res.loc[0]
@@ -130,34 +169,53 @@ def test_cli_batch(paths, tmp_path):
 
 
 def test_cli_single_address_hides_identifiable(paths, capsys):
-    main(["--data-dir", str(paths.data_dir), "estimate", "--address", "10 Test Road, NR4 7AA"])
+    main(
+        [
+            "--data-dir",
+            str(paths.data_dir),
+            "estimate",
+            "--address",
+            "10 Test Road, NR4 7AA",
+        ]
+    )
     fields = {line.split()[0] for line in capsys.readouterr().out.splitlines()}
     assert "price_band" in fields and not set(IDENTIFIABLE) & fields
 
 
-@pytest.mark.parametrize("x, band, label", [
-    (0, (0, 25000), "£0k–£25k"),
-    (249_000, (225_000, 250_000), "£225k–£250k"),
-    (250_000, (250_000, 275_000), "£250k–£275k"),
-    (512_000, (500_000, 550_000), "£500k–£550k"),
-    (1_100_000, (1_000_000, 1_250_000), "£1m–£1.25m"),
-    (4_999_000, (4_000_000, 5_000_000), "£4m–£5m"),
-    (7_000_000, (5_000_000, None), "£5m+"),
-])
+@pytest.mark.parametrize(
+    "x, band, label",
+    [
+        (0, (0, 25000), "£0k–£25k"),
+        (249_000, (225_000, 250_000), "£225k–£250k"),
+        (250_000, (250_000, 275_000), "£250k–£275k"),
+        (512_000, (500_000, 550_000), "£500k–£550k"),
+        (1_100_000, (1_000_000, 1_250_000), "£1m–£1.25m"),
+        (4_999_000, (4_000_000, 5_000_000), "£4m–£5m"),
+        (7_000_000, (5_000_000, None), "£5m+"),
+    ],
+)
 def test_price_band(x, band, label):
     from house_price_estimate.cli import band_label, price_band
+
     assert price_band(x) == band
     assert band_label(*band) == label
 
 
 def test_calibration_sets_range_and_confidence(paths, tmp_path):
     import json
+
     cal = tmp_path / "cal.json"
-    cal.write_text(json.dumps({"groups": {
-        "all": {"q10": 0.5, "q90": 1.5},
-        "repeat_gt15y": {"q10": 0.9, "q90": 1.2},
-        "repeat_le5y": {"q10": 0.95, "q90": 1.1},
-    }}))
+    cal.write_text(
+        json.dumps(
+            {
+                "groups": {
+                    "all": {"q10": 0.5, "q90": 1.5},
+                    "repeat_gt15y": {"q10": 0.9, "q90": 1.2},
+                    "repeat_le5y": {"q10": 0.95, "q90": 1.1},
+                }
+            }
+        )
+    )
     e = Estimator(paths.db, calibration=cal)
     v = e.estimate_address("10 Test Road, NR4 7AA")  # last sold 2015
     assert v.calibration_group == "repeat_5_15y"  # not calibrated: widest, low
@@ -175,6 +233,7 @@ def test_calibration_sets_range_and_confidence(paths, tmp_path):
 def test_cli_calibrate(paths, tmp_path):
     import json
     import shutil
+
     (tmp_path / "processed").mkdir()
     shutil.copy(paths.db, tmp_path / "processed" / "hpe.duckdb")
     main(["--data-dir", str(tmp_path), "calibrate", "--year", "2024", "--n", "50"])

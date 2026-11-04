@@ -10,14 +10,17 @@ from house_price_estimate.address import (
 from house_price_estimate.match import Candidate, match_address
 
 
-@pytest.mark.parametrize("raw, expected", [
-    ("nr4 7tj", "NR4 7TJ"),
-    ("NR47TJ", "NR4 7TJ"),
-    (" sw1a  1aa ", "SW1A 1AA"),
-    ("EC1A1BB", "EC1A 1BB"),
-    ("not a postcode", None),
-    ("", None),
-])
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("nr4 7tj", "NR4 7TJ"),
+        ("NR47TJ", "NR4 7TJ"),
+        (" sw1a  1aa ", "SW1A 1AA"),
+        ("EC1A1BB", "EC1A 1BB"),
+        ("not a postcode", None),
+        ("", None),
+    ],
+)
 def test_normalise_postcode(raw, expected):
     assert normalise_postcode(raw) == expected
 
@@ -28,15 +31,18 @@ def test_extract_postcode_takes_last_and_strips_it():
     assert "NR4" not in rest
 
 
-@pytest.mark.parametrize("text, expected", [
-    ("FLAT 2 10 HIGH ROAD", ("2", "10")),
-    ("FLAT B 12 HIGH ROAD", ("B", "12")),
-    ("12 A HIGH ROAD", ("12A",)),
-    ("12A HIGH ROAD", ("12A",)),
-    ("12 14 HIGH ROAD", ("12", "14")),
-    ("1ST FLOOR FLAT 3 THIRD AVENUE", ("3",)),
-    ("ROSE COTTAGE MILL LANE", ()),
-])
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("FLAT 2 10 HIGH ROAD", ("2", "10")),
+        ("FLAT B 12 HIGH ROAD", ("B", "12")),
+        ("12 A HIGH ROAD", ("12A",)),
+        ("12A HIGH ROAD", ("12A",)),
+        ("12 14 HIGH ROAD", ("12", "14")),
+        ("1ST FLOOR FLAT 3 THIRD AVENUE", ("3",)),
+        ("ROSE COTTAGE MILL LANE", ()),
+    ],
+)
 def test_identifiers(text, expected):
     assert identifiers(text) == expected
 
@@ -58,7 +64,11 @@ def _cand(unit, street):
 
 
 def test_match_numbered_prefers_same_street():
-    cands = [_cand("10", "MILL CLOSE"), _cand("10", "MILL LANE"), _cand("FLAT 1 10", "MILL LANE")]
+    cands = [
+        _cand("10", "MILL CLOSE"),
+        _cand("10", "MILL LANE"),
+        _cand("FLAT 1 10", "MILL LANE"),
+    ]
     m = match_address(parse_address("10 Mill Lane, NR4 7TJ"), cands)
     assert (m.status, m.indices) == ("exact", [1])
 
@@ -70,7 +80,9 @@ def test_match_flat_order_matters():
 
 
 def test_match_house_without_flat_is_not_a_flat():
-    m = match_address(parse_address("Flat 2, 10 X Road, NR4 7TJ"), [_cand("10", "X ROAD")])
+    m = match_address(
+        parse_address("Flat 2, 10 X Road, NR4 7TJ"), [_cand("10", "X ROAD")]
+    )
     assert m.status == "none"
 
 

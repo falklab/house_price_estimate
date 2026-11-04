@@ -28,7 +28,9 @@ ONSPD_SEARCH_URL = (
     "https://geoportal.statistics.gov.uk/api/search/v1/collections/dataset/"
     "items?q=ONS%20Postcode%20Directory&limit=50"
 )
-ARCGIS_ITEM_DATA_URL = "https://www.arcgis.com/sharing/rest/content/items/{item_id}/data"
+ARCGIS_ITEM_DATA_URL = (
+    "https://www.arcgis.com/sharing/rest/content/items/{item_id}/data"
+)
 EPC_BULK_URL = "https://get-energy-performance-data.communities.gov.uk/"
 
 ENGLAND_CODE = "E92000001"
@@ -111,4 +113,6 @@ class ModelParams:
 
 def calibration_path(processed_dir: Path, use_epc: bool) -> Path:
     """Calibration file for a model configuration. Contains no addresses."""
-    return Path(processed_dir) / ("calibration.json" if use_epc else "calibration_no_epc.json")
+    return Path(processed_dir) / (
+        "calibration.json" if use_epc else "calibration_no_epc.json"
+    )

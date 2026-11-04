@@ -28,7 +28,9 @@ CHUNK = 1 << 20
 
 
 def _open(url: str, headers: Optional[dict] = None):
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, **(headers or {})})
+    req = urllib.request.Request(
+        url, headers={"User-Agent": USER_AGENT, **(headers or {})}
+    )
     return urllib.request.urlopen(req, timeout=60)
 
 
@@ -113,7 +115,9 @@ def latest_onspd_url() -> str:
     return ARCGIS_ITEM_DATA_URL.format(item_id=item_id)
 
 
-def download_onspd(paths: Paths, url: Optional[str] = None, force: bool = False) -> Path:
+def download_onspd(
+    paths: Paths, url: Optional[str] = None, force: bool = False
+) -> Path:
     url = url or latest_onspd_url()
     return fetch(url, paths.onspd_dir / "onspd.zip", force)
 
@@ -127,7 +131,9 @@ def epc_instructions(paths: Paths) -> str:
     )
 
 
-def download_all(paths: Paths, onspd_url: Optional[str] = None, force: bool = False) -> None:
+def download_all(
+    paths: Paths, onspd_url: Optional[str] = None, force: bool = False
+) -> None:
     paths.raw.mkdir(parents=True, exist_ok=True)
     download_hpi(paths, force)
     download_onspd(paths, onspd_url, force)

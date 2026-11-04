@@ -61,7 +61,7 @@ def extract_postcode(raw: str) -> Tuple[Optional[str], str]:
     if not matches:
         return None, s
     m = matches[-1]
-    rest = s[: m.start()] + " " + s[m.end():]
+    rest = s[: m.start()] + " " + s[m.end() :]
     return f"{m.group(1)} {m.group(2)}", rest
 
 
