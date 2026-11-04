@@ -60,29 +60,44 @@ it can't adjust for floor area.
 You need about 60 GB of free disk for the downloads, the build and the
 temporary files.
 
+## Installation
+
+Requires Python 3.12 or later. With [uv](https://docs.astral.sh/uv/), from a
+clone of the repository:
+
+```bash
+git clone https://github.com/falklab/house_price_estimate.git
+cd house_price_estimate
+uv sync
+```
+
+By default the data goes in `data/` in the repository. To install a release
+into another environment instead, use
+`pip install git+https://github.com/falklab/house_price_estimate.git@vX.Y.Z`,
+and set `--data-dir` or `HPE_DATA_DIR` (the default location is only
+meaningful in a clone).
+
 ## Usage
 
 ```bash
-cd py/house_price_estimate
-pip install -r requirements.txt
-
-python -m house_price_estimate download          # ~6 GB
+uv run house-price-estimate download          # ~6 GB
 # optional: put the EPC zip in data/raw/epc/
-python -m house_price_estimate build             # builds data/processed/hpe.duckdb
-python -m house_price_estimate calibrate         # fits the estimate ranges (~3 min)
+uv run house-price-estimate build             # builds data/processed/hpe.duckdb
+uv run house-price-estimate calibrate         # fits the estimate ranges (~3 min)
 
 # one address
-python -m house_price_estimate estimate --address "10 Downing Street, London SW1A 2AA"
+uv run house-price-estimate estimate --address "10 Downing Street, London SW1A 2AA"
 
 # a CSV with columns id,address (or a separate postcode column)
-python -m house_price_estimate estimate --input addresses.csv --id-col id \
+uv run house-price-estimate estimate --input addresses.csv --id-col id \
     --address-col address [--postcode-col postcode] --out estimates.csv
 # add --keep-identifiable for the exact estimate, postcode, sale history etc.
 
 # accuracy on 2025 sales, each valued using only earlier data
-python -m house_price_estimate backtest --year 2025 --n 2000
+uv run house-price-estimate backtest --year 2025 --n 2000
 ```
 
+`python -m house_price_estimate` works as well as `house-price-estimate`.
 Use `--data-dir` (or the `HPE_DATA_DIR` environment variable) to keep the
 data somewhere else. To refresh the data, re-run `download`, `build` and
 `calibrate`: Land Registry updates monthly, and the HPI lags by about two
@@ -186,8 +201,8 @@ rural/urban class, match quality and age of the last sale. It also has a
 separate section on Norfolk and Suffolk, a section on the effect of price
 bands with advice on using them, and a summary of where the estimates are
 weak. To re-run it after a rebuild, install the notebook
-extras in `requirements.txt`, set `RECOMPUTE = True`, and run
-`jupyter nbconvert --to notebook --execute --inplace notebooks/performance.ipynb`.
+packages with `uv sync --group notebook`, set `RECOMPUTE = True`, and run
+`uv run jupyter nbconvert --to notebook --execute --inplace notebooks/performance.ipynb`.
 This takes about 20 minutes.
 
 The address matcher finds an earlier sale for 72% of sales. Only 71% have
@@ -207,11 +222,16 @@ that haven't sold since 1995.
 ## Tests
 
 ```bash
-python -m pytest tests
+uv run pytest
 ```
 
 The tests build a synthetic mini dataset in the real file formats. They
 cover parsing, matching, indexing, blending, the CLI and the network guards.
+
+## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup (uv,
+pre-commit hooks, devcontainer), code style, branching and releases.
 
 ## Method references
 
